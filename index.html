@@ -216,7 +216,9 @@
     <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <!-- تم حذف المربع الابيض الفارغ نهائياً من هنا وصار التنسيق متناسقاً -->
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-400 to-sky-500 flex items-center justify-center text-white font-bold text-2xl shadow-md">
+                    Aa
+                </div>
                 <div>
                     <h1 class="arabic-ui font-bold text-slate-800 text-lg leading-tight">My Alphabet Activity Book (Ages 3–6 • KG1/KG2)</h1>
                     <p class="text-xs text-slate-500">Interactive Edition • Print, trace, colour & play</p>
@@ -300,6 +302,7 @@
     <div id="printContainer" class="hidden print:block"></div>
 
     <script>
+        // Complete 52-Image Wired Curriculum Data matching your exact filenames & subjects
         const alphabetData = [
             { letter: 'A', lower: 'a', word: 'APPLE', img1: 'A1-apple.jpg', emoji: '🍎', secondWord: 'Ant', img2: 'A2-ant.jpg', secondEmoji: '🐜', distractors: ['B', 'C', 'e', 'm', 'R', 's', 'T'] },
             { letter: 'B', lower: 'b', word: 'BALL', img1: 'B1-ball.jpg', emoji: '⚽', secondWord: 'Bee', img2: 'B2-bee.jpg', secondEmoji: '🐝', distractors: ['P', 'd', 'R', 'a', 'E', 'q', 's'] },
@@ -336,9 +339,10 @@
                 base + '.jpg',
                 base + '.png',
                 base + '.jpeg',
+                base.toLowerCase() + '.jpg',
+                base.toLowerCase() + '.png',
                 'images/' + base + '.jpg',
-                'images/' + base + '.png',
-                'images/' + base + '.jpeg'
+                'images/' + base + '.png'
             ];
             if (step < candidates.length) {
                 imgEl.dataset.step = String(step + 1);
@@ -354,8 +358,7 @@
         function renderIllustration(imgFile, fallbackEmoji, imgClasses = 'w-20 h-20', emojiClasses = 'text-6xl') {
             const baseName = imgFile.replace(/\.(png|jpg|jpeg)$/i, '');
             return `<span class="inline-flex items-center justify-center align-middle select-none">
-                <img src="${baseName}.jpg" data-base="${baseName}" data-step="0" alt="" class="${imgClasses} object-contain rounded-2xl bg-white p-1 shadow-sm"
-                     onerror="handleImgFallback(this)" />
+                <img src="${baseName}.jpg" data-base="${baseName}" data-step="0" alt="" class="${imgClasses} object-contain rounded-2xl bg-white p-1 shadow-sm" crossorigin="anonymous" onerror="handleImgFallback(this)" />
                 <span class="${emojiClasses}" style="display:none;">${fallbackEmoji}</span>
             </span>`;
         }
@@ -972,7 +975,6 @@
             const totalImgs = imgs.length;
 
             const triggerPrint = () => {
-                // إزالة العطل عبر تفعيل زر الطباعة بعد التأكد من تحميل العناصر بالكامل وجعل زر الحفظ يعمل بنشاط
                 setTimeout(() => {
                     window.print();
                     setTimeout(() => { printBox.innerHTML = ''; }, 1000);
@@ -1007,15 +1009,19 @@
                 return generatePageHTML(p, idx + 1).replace(/<canvas[^>]*><\/canvas>/g, '');
             }).join('');
 
+            // جمع الصور والانتظار لمدة كافية (3 ثوانٍ أقصى حد) لضمان تحميل جميع الـ 52 صورة في الـ 134 صفحة قبل فتح نافذة الطباعة
             const imgs = Array.from(printBox.querySelectorAll('img'));
             let loadedCount = 0;
             const totalImgs = imgs.length;
+            let printed = false;
 
             const triggerPrint = () => {
+                if (printed) return;
+                printed = true;
                 setTimeout(() => {
                     window.print();
                     setTimeout(() => { printBox.innerHTML = ''; }, 1000);
-                }, 800);
+                }, 1500);
             };
 
             if (totalImgs === 0) {
@@ -1023,18 +1029,30 @@
                 return;
             }
 
+            // مؤمانة طوارئ: طباعة تلقائية بعد 3 ثوانٍ حتى لو بطأ الاتصال
+            const fallbackTimer = setTimeout(triggerPrint, 3000);
+
             imgs.forEach(img => {
                 if (img.complete && img.naturalHeight !== 0) {
                     loadedCount++;
-                    if (loadedCount >= totalImgs) triggerPrint();
+                    if (loadedCount >= totalImgs) {
+                        clearTimeout(fallbackTimer);
+                        triggerPrint();
+                    }
                 } else {
                     img.addEventListener('load', () => {
                         loadedCount++;
-                        if (loadedCount >= totalImgs) triggerPrint();
+                        if (loadedCount >= totalImgs) {
+                            clearTimeout(fallbackTimer);
+                            triggerPrint();
+                        }
                     }, { once: true });
                     img.addEventListener('error', () => {
                         loadedCount++;
-                        if (loadedCount >= totalImgs) triggerPrint();
+                        if (loadedCount >= totalImgs) {
+                            clearTimeout(fallbackTimer);
+                            triggerPrint();
+                        }
                     }, { once: true });
                 }
             });
